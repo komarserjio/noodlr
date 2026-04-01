@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -59,7 +59,7 @@ export default function SongsPage() {
 
   // Timer state
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null)
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null)
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isPaused, setIsPaused] = useState(false)
 
   const fetchSongs = useCallback(async () => {
@@ -81,10 +81,12 @@ export default function SongsPage() {
   }, [fetchSongs])
 
   // Timer effect: decrement seconds and auto-stop at 0
+  // Depends on songId (not the full activeTimer object) so the interval is created
+  // once per start/resume and not torn down and recreated on every tick.
   useEffect(() => {
-    if (!activeTimer || isPaused) return
+    if (!activeTimer?.songId || isPaused) return
 
-    const interval = setInterval(() => {
+    timerIntervalRef.current = setInterval(() => {
       setActiveTimer((prev) => {
         if (!prev) return null
 
@@ -100,12 +102,14 @@ export default function SongsPage() {
       })
     }, 1000)
 
-    setTimerInterval(interval)
-
     return () => {
-      clearInterval(interval)
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
     }
-  }, [activeTimer, isPaused])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTimer?.songId, isPaused])
 
   function toggleSort(field: SortField) {
     if (sort === field) {
@@ -143,9 +147,9 @@ export default function SongsPage() {
   }
 
   function handlePauseTimer() {
-    if (timerInterval) {
-      clearInterval(timerInterval)
-      setTimerInterval(null)
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
     }
     setIsPaused(true)
   }
@@ -156,9 +160,9 @@ export default function SongsPage() {
   }
 
   async function handleStopTimer(songId: number, duration: number) {
-    if (timerInterval) {
-      clearInterval(timerInterval)
-      setTimerInterval(null)
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
     }
 
     setActiveTimer(null)
