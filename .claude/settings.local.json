@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(npx shadcn@latest init --defaults)"
+      "Bash(npx shadcn@latest init --defaults)",
+      "Bash(npx shadcn@latest add table input label select dialog badge card textarea)",
+      "Bash(npx shadcn@latest add dropdown-menu separator tooltip)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(echo $SHELL)",
+      "Read(//Users/seko/**)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(xargs kill:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"Initial commit: Noodlr - Guitar repertoire tracking app with multi-user auth and practice timer:*)"
     ]
   }
 }
