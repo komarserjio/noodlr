@@ -45,6 +45,7 @@ interface ActiveTimer {
   songName: string
   secondsLeft: number
   bpm: number | null
+  beatsPerBar: number
 }
 
 const PRACTICE_DURATION = 5 * 60 // 5 minutes in seconds
@@ -66,7 +67,8 @@ export default function SongsPage() {
   // Metronome state
   const audioCtxRef = useRef<AudioContext | null>(null)
   const metronomeRef = useRef<NodeJS.Timeout | null>(null)
-  const [isBeat, setIsBeat] = useState(false)
+  const beatCountRef = useRef(0)
+  const [beatType, setBeatType] = useState<'accent' | 'regular' | null>(null)
 
   const fetchSongs = useCallback(async () => {
     setLoading(true)
@@ -150,7 +152,13 @@ export default function SongsPage() {
     fetchSongs()
   }
 
-  function playClick() {
+  function parseBeatsPerBar(timeSignature: string | null): number {
+    if (!timeSignature) return 4
+    const n = parseInt(timeSignature.split('/')[0])
+    return isNaN(n) || n < 1 ? 4 : n
+  }
+
+  function playClick(accented: boolean) {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new AudioContext()
     }
@@ -159,24 +167,30 @@ export default function SongsPage() {
     const gain = ctx.createGain()
     osc.connect(gain)
     gain.connect(ctx.destination)
-    osc.frequency.value = 1000
-    gain.gain.setValueAtTime(1, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05)
+    osc.frequency.value = accented ? 1200 : 800
+    const duration = accented ? 0.06 : 0.04
+    const volume = accented ? 1.0 : 0.5
+    gain.gain.setValueAtTime(volume, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
     osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.05)
+    osc.stop(ctx.currentTime + duration)
   }
 
-  function startMetronome(bpm: number) {
+  function startMetronome(bpm: number, beatsPerBar: number) {
     stopMetronome()
+    beatCountRef.current = 0
     const intervalMs = (60 / bpm) * 1000
-    playClick()
-    setIsBeat(true)
-    setTimeout(() => setIsBeat(false), 100)
-    metronomeRef.current = setInterval(() => {
-      playClick()
-      setIsBeat(true)
-      setTimeout(() => setIsBeat(false), 100)
-    }, intervalMs)
+
+    const tick = () => {
+      const isAccent = beatCountRef.current === 0
+      playClick(isAccent)
+      setBeatType(isAccent ? 'accent' : 'regular')
+      setTimeout(() => setBeatType(null), 100)
+      beatCountRef.current = (beatCountRef.current + 1) % beatsPerBar
+    }
+
+    tick()
+    metronomeRef.current = setInterval(tick, intervalMs)
   }
 
   function stopMetronome() {
@@ -184,20 +198,23 @@ export default function SongsPage() {
       clearInterval(metronomeRef.current)
       metronomeRef.current = null
     }
-    setIsBeat(false)
+    beatCountRef.current = 0
+    setBeatType(null)
   }
 
   function handlePlayTimer(song: Song) {
     if (activeTimer) return // Disabled while timer is running
 
+    const beatsPerBar = parseBeatsPerBar(song.time_signature)
     setActiveTimer({
       songId: song.id,
       songName: song.name,
       secondsLeft: PRACTICE_DURATION,
       bpm: song.bpm,
+      beatsPerBar,
     })
     setIsPaused(false)
-    if (song.bpm) startMetronome(song.bpm)
+    if (song.bpm) startMetronome(song.bpm, beatsPerBar)
   }
 
   function handlePauseTimer() {
@@ -211,7 +228,7 @@ export default function SongsPage() {
 
   function handleResumeTimer() {
     setIsPaused(false)
-    if (activeTimer?.bpm) startMetronome(activeTimer.bpm)
+    if (activeTimer?.bpm) startMetronome(activeTimer.bpm, activeTimer.beatsPerBar)
     // Timer effect will automatically restart the interval
   }
 
@@ -534,7 +551,13 @@ export default function SongsPage() {
               {activeTimer.bpm && (
                 <div className="flex items-center gap-2 text-slate-300">
                   <div
-                    className={`h-2 w-2 rounded-full bg-orange-400 transition-opacity duration-75 ${isBeat ? 'opacity-100' : 'opacity-25'}`}
+                    className={`rounded-full transition-all duration-75 ${
+                      beatType === 'accent'
+                        ? 'h-3 w-3 bg-white opacity-100'
+                        : beatType === 'regular'
+                        ? 'h-2 w-2 bg-orange-400 opacity-100'
+                        : 'h-2 w-2 bg-orange-400 opacity-25'
+                    }`}
                   />
                   <span className="text-sm tabular-nums">{activeTimer.bpm} BPM</span>
                 </div>
