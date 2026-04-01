@@ -13,6 +13,7 @@ import {
   Search,
   X,
   Play,
+  Pause,
   Square,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -59,6 +60,7 @@ export default function SongsPage() {
   // Timer state
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null)
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null)
+  const [isPaused, setIsPaused] = useState(false)
 
   const fetchSongs = useCallback(async () => {
     setLoading(true)
@@ -80,7 +82,7 @@ export default function SongsPage() {
 
   // Timer effect: decrement seconds and auto-stop at 0
   useEffect(() => {
-    if (!activeTimer) return
+    if (!activeTimer || isPaused) return
 
     const interval = setInterval(() => {
       setActiveTimer((prev) => {
@@ -103,7 +105,7 @@ export default function SongsPage() {
     return () => {
       clearInterval(interval)
     }
-  }, [activeTimer])
+  }, [activeTimer, isPaused])
 
   function toggleSort(field: SortField) {
     if (sort === field) {
@@ -137,6 +139,20 @@ export default function SongsPage() {
       songName: song.name,
       secondsLeft: PRACTICE_DURATION,
     })
+    setIsPaused(false)
+  }
+
+  function handlePauseTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval)
+      setTimerInterval(null)
+    }
+    setIsPaused(true)
+  }
+
+  function handleResumeTimer() {
+    setIsPaused(false)
+    // Timer effect will automatically restart the interval
   }
 
   async function handleStopTimer(songId: number, duration: number) {
@@ -146,6 +162,7 @@ export default function SongsPage() {
     }
 
     setActiveTimer(null)
+    setIsPaused(false)
 
     try {
       const res = await fetch('/api/practice-sessions', {
@@ -434,25 +451,33 @@ export default function SongsPage() {
 
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Play className="h-5 w-5 text-orange-500" />
+              <button
+                onClick={() => (isPaused ? handleResumeTimer() : handlePauseTimer())}
+                className="text-orange-500 hover:text-orange-400 hover:cursor-pointer transition-colors"
+                title={isPaused ? 'Resume' : 'Pause'}
+              >
+                {isPaused ? (
+                  <Play className="h-5 w-5" />
+                ) : (
+                  <Pause className="h-5 w-5" />
+                )}
+              </button>
               <div>
                 <p className="font-semibold">{activeTimer.songName}</p>
                 <p className="text-sm text-slate-300">
-                  Time remaining: {formatTimerDisplay(activeTimer.secondsLeft)}
+                  {isPaused ? 'Time paused: ' : 'Time remaining: '}{formatTimerDisplay(activeTimer.secondsLeft)}
                 </p>
               </div>
             </div>
-            <Button
-              variant="destructive"
-              size="sm"
+            <button
               onClick={() =>
                 handleStopTimer(activeTimer.songId, PRACTICE_DURATION - activeTimer.secondsLeft)
               }
-              className="hover:cursor-pointer"
+              className="text-red-500 hover:text-red-400 hover:cursor-pointer transition-colors"
+              title="Stop"
             >
-              <Square className="h-4 w-4 mr-2" />
-              Stop
-            </Button>
+              <Square className="h-6 w-6 fill-current" />
+            </button>
           </div>
         </div>
       )}
