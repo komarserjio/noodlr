@@ -44,6 +44,7 @@ interface ActiveTimer {
   songId: number
   songName: string
   secondsLeft: number
+  bpm: number | null
 }
 
 const PRACTICE_DURATION = 5 * 60 // 5 minutes in seconds
@@ -62,6 +63,11 @@ export default function SongsPage() {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isPaused, setIsPaused] = useState(false)
 
+  // Metronome state
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const metronomeRef = useRef<NodeJS.Timeout | null>(null)
+  const [isBeat, setIsBeat] = useState(false)
+
   const fetchSongs = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
@@ -79,6 +85,15 @@ export default function SongsPage() {
   useEffect(() => {
     fetchSongs()
   }, [fetchSongs])
+
+  // Cleanup AudioContext on unmount
+  useEffect(() => {
+    return () => {
+      stopMetronome()
+      audioCtxRef.current?.close()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Timer effect: decrement seconds and auto-stop at 0
   // Depends on songId (not the full activeTimer object) so the interval is created
@@ -135,6 +150,43 @@ export default function SongsPage() {
     fetchSongs()
   }
 
+  function playClick() {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContext()
+    }
+    const ctx = audioCtxRef.current
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 1000
+    gain.gain.setValueAtTime(1, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.05)
+  }
+
+  function startMetronome(bpm: number) {
+    stopMetronome()
+    const intervalMs = (60 / bpm) * 1000
+    playClick()
+    setIsBeat(true)
+    setTimeout(() => setIsBeat(false), 100)
+    metronomeRef.current = setInterval(() => {
+      playClick()
+      setIsBeat(true)
+      setTimeout(() => setIsBeat(false), 100)
+    }, intervalMs)
+  }
+
+  function stopMetronome() {
+    if (metronomeRef.current) {
+      clearInterval(metronomeRef.current)
+      metronomeRef.current = null
+    }
+    setIsBeat(false)
+  }
+
   function handlePlayTimer(song: Song) {
     if (activeTimer) return // Disabled while timer is running
 
@@ -142,8 +194,10 @@ export default function SongsPage() {
       songId: song.id,
       songName: song.name,
       secondsLeft: PRACTICE_DURATION,
+      bpm: song.bpm,
     })
     setIsPaused(false)
+    if (song.bpm) startMetronome(song.bpm)
   }
 
   function handlePauseTimer() {
@@ -152,10 +206,12 @@ export default function SongsPage() {
       timerIntervalRef.current = null
     }
     setIsPaused(true)
+    stopMetronome()
   }
 
   function handleResumeTimer() {
     setIsPaused(false)
+    if (activeTimer?.bpm) startMetronome(activeTimer.bpm)
     // Timer effect will automatically restart the interval
   }
 
@@ -165,6 +221,7 @@ export default function SongsPage() {
       timerIntervalRef.current = null
     }
 
+    stopMetronome()
     setActiveTimer(null)
     setIsPaused(false)
 
@@ -473,15 +530,25 @@ export default function SongsPage() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() =>
-                handleStopTimer(activeTimer.songId, PRACTICE_DURATION - activeTimer.secondsLeft)
-              }
-              className="text-red-500 hover:text-red-400 hover:cursor-pointer transition-colors"
-              title="Stop"
-            >
-              <Square className="h-6 w-6 fill-current" />
-            </button>
+            <div className="flex items-center gap-4">
+              {activeTimer.bpm && (
+                <div className="flex items-center gap-2 text-slate-300">
+                  <div
+                    className={`h-2 w-2 rounded-full bg-orange-400 transition-opacity duration-75 ${isBeat ? 'opacity-100' : 'opacity-25'}`}
+                  />
+                  <span className="text-sm tabular-nums">{activeTimer.bpm} BPM</span>
+                </div>
+              )}
+              <button
+                onClick={() =>
+                  handleStopTimer(activeTimer.songId, PRACTICE_DURATION - activeTimer.secondsLeft)
+                }
+                className="text-red-500 hover:text-red-400 hover:cursor-pointer transition-colors"
+                title="Stop"
+              >
+                <Square className="h-6 w-6 fill-current" />
+              </button>
+            </div>
           </div>
         </div>
       )}
