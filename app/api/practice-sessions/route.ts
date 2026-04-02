@@ -9,6 +9,28 @@ async function getUserId(): Promise<number> {
   return parseInt(h.get(USER_ID_HEADER) ?? '0')
 }
 
+export async function GET(request: Request) {
+  const userId = await getUserId()
+  const { searchParams } = new URL(request.url)
+  const songId = searchParams.get('songId')
+
+  if (!songId) {
+    return NextResponse.json({ error: 'songId is required' }, { status: 400 })
+  }
+
+  // Verify song belongs to user
+  const song = db.prepare('SELECT id FROM songs WHERE id = ? AND user_id = ?').get(songId, userId)
+  if (!song) {
+    return NextResponse.json({ error: 'Song not found' }, { status: 404 })
+  }
+
+  const sessions = db
+    .prepare('SELECT * FROM practice_sessions WHERE song_id = ? AND user_id = ? ORDER BY created_at DESC')
+    .all(songId, userId) as PracticeSession[]
+
+  return NextResponse.json({ sessions })
+}
+
 export async function POST(request: Request) {
   const userId = await getUserId()
   const body = await request.json()

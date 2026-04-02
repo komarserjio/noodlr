@@ -409,7 +409,9 @@ export default function SongsPage() {
                   {songs.map((song) => (
                     <TableRow key={song.id} className="group">
                       <TableCell>
-                        <div className="font-medium">{song.name}</div>
+                        <Link href={`/songs/${song.id}`} className="font-medium hover:underline">
+                          {song.name}
+                        </Link>
                         {/* Mobile: show type + artist inline */}
                         <div className="sm:hidden text-sm text-muted-foreground mt-0.5">
                           {[song.type, song.artist].filter(Boolean).join(' · ')}
