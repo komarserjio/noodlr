@@ -53,6 +53,7 @@ const PRACTICE_DURATION = 5 * 60 // 5 minutes in seconds
 export default function SongsPage() {
   const router = useRouter()
   const [songs, setSongs] = useState<Song[]>([])
+  const [practicedDays, setPracticedDays] = useState<Record<number, boolean[]>>({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -80,8 +81,23 @@ export default function SongsPage() {
 
     const res = await fetch(`/api/songs?${params}`)
     const data = await res.json()
-    setSongs(data.songs ?? [])
+    const fetchedSongs: Song[] = data.songs ?? []
+    setSongs(fetchedSongs)
     setLoading(false)
+
+    // Fetch last 7 days practice data for all songs in parallel
+    const dayEntries = await Promise.all(
+      fetchedSongs.map(async (song) => {
+        try {
+          const r = await fetch(`/api/songs/${song.id}/stats`)
+          const s = await r.json()
+          return [song.id, s.last_7_days ?? Array(7).fill(false)] as const
+        } catch {
+          return [song.id, Array(7).fill(false)] as const
+        }
+      })
+    )
+    setPracticedDays(Object.fromEntries(dayEntries))
   }, [search, typeFilter, sort, order])
 
   useEffect(() => {
@@ -412,6 +428,16 @@ export default function SongsPage() {
                         <Link href={`/songs/${song.id}`} className="font-medium hover:underline">
                           {song.name}
                         </Link>
+                        {practicedDays[song.id] && (
+                          <div className="flex gap-0.5 mt-1">
+                            {practicedDays[song.id].map((practiced, i) => (
+                              <span
+                                key={i}
+                                className={`h-2 w-2 rounded-full inline-block ${practiced ? 'bg-green-500' : 'bg-muted-foreground/30'}`}
+                              />
+                            ))}
+                          </div>
+                        )}
                         {/* Mobile: show type + artist inline */}
                         <div className="sm:hidden text-sm text-muted-foreground mt-0.5">
                           {[song.type, song.artist].filter(Boolean).join(' · ')}

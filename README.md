@@ -26,7 +26,7 @@ VIBE CODED USING CLAUDE CODE
   - Song name
   - Duration practiced (actual elapsed time)
   - Timestamp of session
-- **Future stats** - Foundation laid for upcoming analytics (total practice time per song, session count, practice streaks)
+- **Practice stats** - Per-song analytics: total sessions, total minutes, and a 7-day practice activity view with streak tracking
 
 ### 🔐 Multi-User Support
 - **Secure signup & login** with email and password
@@ -231,6 +231,27 @@ Delete a song (and its associated practice sessions).
 **Errors:**
 - `404` - Song not found or doesn't belong to user
 
+#### `GET /api/songs/[id]/stats`
+Get practice statistics for a song.
+
+**Response:** `200 OK`
+```json
+{
+  "total_sessions": 12,
+  "minutes_total": 60,
+  "days_in_a_row": 3,
+  "last_7_days": [false, true, false, true, true, true, false]
+}
+```
+
+- `total_sessions` — total number of practice sessions logged
+- `minutes_total` — total minutes practiced (rounded down)
+- `days_in_a_row` — current consecutive-day streak (resets if no practice yesterday or today)
+- `last_7_days` — array of 7 booleans; index `0` = 6 days ago, index `6` = today
+
+**Errors:**
+- `404` - Song not found or doesn't belong to user
+
 ---
 
 ### Practice Sessions
@@ -314,7 +335,7 @@ The app uses SQLite with WAL (Write-Ahead Logging) for better concurrency. Datab
 ## Future Enhancements
 
 - 📊 **Practice Statistics** - View practice history and progress per song
-- 🎯 **Goals & Streaks** - Set practice goals and track consistency
+- 🎯 **Goals** - Set practice goals and track consistency
 - 📱 **Mobile App** - Native apps for iOS/Android
 - 🎵 **Music Integration** - Link to Spotify, YouTube, or other services
 - 📤 **Export Data** - Export practice logs as CSV/PDF

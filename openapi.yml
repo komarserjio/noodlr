@@ -373,6 +373,13 @@ paths:
                   days_in_a_row:
                     type: integer
                     description: Current consecutive-day practice streak
+                  last_7_days:
+                    type: array
+                    items:
+                      type: boolean
+                    minItems: 7
+                    maxItems: 7
+                    description: Whether the song was practiced each of the last 7 calendar days (index 0 = 6 days ago, index 6 = today)
         '404':
           description: Not found
           content:

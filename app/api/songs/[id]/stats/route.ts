@@ -59,9 +59,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .all(id, userId) as { d: string }[]
   ).map((r) => r.d)
 
+  const practicedSet = new Set(practiceDates)
+  const today = new Date()
+  today.setUTCHours(0, 0, 0, 0)
+  const last_7_days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today.getTime() - (6 - i) * 86400000)
+    const dateStr = d.toISOString().slice(0, 10)
+    return practicedSet.has(dateStr)
+  })
+
   return NextResponse.json({
     total_sessions: totals.total_sessions,
     minutes_total: Math.floor(totals.total_seconds / 60),
     days_in_a_row: computeStreak(practiceDates),
+    last_7_days,
   })
 }
