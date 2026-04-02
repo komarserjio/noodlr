@@ -6,6 +6,12 @@ import Link from 'next/link'
 import { NavBar } from '@/components/NavBar'
 import { Button } from '@/components/ui/button'
 import { TYPE_COLORS, type Song, type PracticeSession } from '@/lib/types'
+
+interface SongStats {
+  total_sessions: number
+  minutes_total: number
+  days_in_a_row: number
+}
 import {
   Play,
   Pause,
@@ -59,6 +65,7 @@ export default function SongViewPage() {
 
   const [song, setSong] = useState<Song | null>(null)
   const [sessions, setSessions] = useState<PracticeSession[]>([])
+  const [stats, setStats] = useState<SongStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Timer state
@@ -73,15 +80,18 @@ export default function SongViewPage() {
   const [beatType, setBeatType] = useState<'accent' | 'regular' | null>(null)
 
   const fetchData = useCallback(async () => {
-    const [songRes, sessionsRes] = await Promise.all([
+    const [songRes, sessionsRes, statsRes] = await Promise.all([
       fetch(`/api/songs/${id}`),
       fetch(`/api/practice-sessions?songId=${id}`),
+      fetch(`/api/songs/${id}/stats`),
     ])
     if (!songRes.ok) { router.push('/songs'); return }
     const { song } = await songRes.json()
     const { sessions } = await sessionsRes.json()
+    const statsData = statsRes.ok ? await statsRes.json() : null
     setSong(song)
     setSessions(sessions)
+    setStats(statsData)
     setLoading(false)
   }, [id, router])
 
@@ -208,10 +218,6 @@ export default function SongViewPage() {
     }
   }
 
-  const totalSessions = sessions.length
-  const totalSeconds = sessions.reduce((sum, s) => sum + s.duration, 0)
-  const totalMinutes = Math.floor(totalSeconds / 60)
-
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -320,18 +326,16 @@ export default function SongViewPage() {
           <h2 className="text-lg font-semibold mb-4">Practice</h2>
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold">{totalSessions}</p>
-              <p className="text-sm text-muted-foreground mt-0.5">{totalSessions === 1 ? 'Session' : 'Sessions'}</p>
+              <p className="text-2xl font-bold">{stats?.total_sessions ?? '—'}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{stats?.total_sessions === 1 ? 'Session' : 'Sessions'}</p>
             </div>
             <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold">{totalMinutes}</p>
+              <p className="text-2xl font-bold">{stats?.minutes_total ?? '—'}</p>
               <p className="text-sm text-muted-foreground mt-0.5">Minutes total</p>
             </div>
             <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold">
-                {sessions.length > 0 ? formatDate(sessions[0].created_at) : '—'}
-              </p>
-              <p className="text-sm text-muted-foreground mt-0.5">Last practiced</p>
+              <p className="text-2xl font-bold">{stats?.days_in_a_row ?? '—'}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Days in a row</p>
             </div>
           </div>
 
