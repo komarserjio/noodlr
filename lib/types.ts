@@ -11,6 +11,7 @@ export interface Song {
   genre: string | null
   created_at: string
   updated_at: string
+  last_practiced: string | null
 }
 
 export interface PracticeSession {

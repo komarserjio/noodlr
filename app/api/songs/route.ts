@@ -17,23 +17,28 @@ export async function GET(request: Request) {
   const sort = searchParams.get('sort') ?? 'created_at'
   const order = searchParams.get('order') === 'asc' ? 'ASC' : 'DESC'
 
-  const allowed = ['name', 'artist', 'type', 'genre', 'bpm', 'created_at', 'key']
+  const allowed = ['name', 'artist', 'type', 'created_at', 'last_practiced']
   const sortCol = allowed.includes(sort) ? sort : 'created_at'
 
-  let query = 'SELECT * FROM songs WHERE user_id = ?'
+  let query = `
+    SELECT s.*, MAX(ps.created_at) as last_practiced
+    FROM songs s
+    LEFT JOIN practice_sessions ps ON ps.song_id = s.id AND ps.user_id = s.user_id
+    WHERE s.user_id = ?
+  `
   const params: (string | number)[] = [userId]
 
   if (search) {
-    query += ' AND (name LIKE ? OR artist LIKE ?)'
+    query += ' AND (s.name LIKE ? OR s.artist LIKE ?)'
     params.push(`%${search}%`, `%${search}%`)
   }
 
   if (type) {
-    query += ' AND type = ?'
+    query += ' AND s.type = ?'
     params.push(type)
   }
 
-  query += ` ORDER BY ${sortCol} ${order}`
+  query += ` GROUP BY s.id ORDER BY ${sortCol} ${order}`
 
   const songs = db.prepare(query).all(...params) as Song[]
   return NextResponse.json({ songs })

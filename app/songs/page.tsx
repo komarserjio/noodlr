@@ -37,7 +37,7 @@ import {
 import { NavBar } from '@/components/NavBar'
 import { SONG_TYPES, TYPE_COLORS, type Song } from '@/lib/types'
 
-type SortField = 'name' | 'artist' | 'type' | 'genre' | 'bpm' | 'created_at'
+type SortField = 'name' | 'artist' | 'type' | 'created_at' | 'last_practiced'
 type SortOrder = 'asc' | 'desc'
 
 interface ActiveTimer {
@@ -394,29 +394,12 @@ export default function SongsPage() {
                         Artist <SortIcon field="artist" />
                       </button>
                     </TableHead>
-                    <TableHead className="hidden lg:table-cell">Key</TableHead>
                     <TableHead className="hidden lg:table-cell">
                       <button
                         className="flex items-center gap-1.5 hover:text-foreground font-medium hover:cursor-pointer"
-                        onClick={() => toggleSort('bpm')}
+                        onClick={() => toggleSort('last_practiced')}
                       >
-                        BPM <SortIcon field="bpm" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="hidden xl:table-cell">
-                      <button
-                        className="flex items-center gap-1.5 hover:text-foreground font-medium hover:cursor-pointer"
-                        onClick={() => toggleSort('genre')}
-                      >
-                        Genre <SortIcon field="genre" />
-                      </button>
-                    </TableHead>
-                    <TableHead className="hidden xl:table-cell">
-                      <button
-                        className="flex items-center gap-1.5 hover:text-foreground font-medium hover:cursor-pointer"
-                        onClick={() => toggleSort('created_at')}
-                      >
-                        Added <SortIcon field="created_at" />
+                        Last practiced <SortIcon field="last_practiced" />
                       </button>
                     </TableHead>
                     <TableHead className="w-24 text-right">Actions</TableHead>
@@ -444,17 +427,8 @@ export default function SongsPage() {
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         {song.artist ?? '—'}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground">
-                        {song.key ?? '—'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground">
-                        {song.bpm ?? '—'}
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell text-muted-foreground">
-                        {song.genre ?? '—'}
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell text-muted-foreground text-sm">
-                        {formatDate(song.created_at)}
+                      <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
+                        {song.last_practiced ? formatDate(song.last_practiced) : '—'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
