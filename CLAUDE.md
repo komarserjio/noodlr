@@ -38,6 +38,14 @@ data/         # repertoire.db (SQLite, WAL mode)
 
 Full OpenAPI 3.1 spec: `openapi.yml` — endpoints, request/response schemas, auth requirements.
 
+## Testing
+
+During manual testing use following credentials to log in:
+E-mail: test@noodlr.app
+Password: test@noodlr.app
+
+Following user has already 50 songs listed.
+
 ## Key conventions
 
 - All shared types live in `lib/types.ts` — check before defining new ones
@@ -45,3 +53,4 @@ Full OpenAPI 3.1 spec: `openapi.yml` — endpoints, request/response schemas, au
 - Auth is session-based, enforced in `middleware.ts`
 - DB access is server-side only (Route Handlers or Server Components/Actions)
 - Dev server: `npm run dev` on port 3000
+- Always create feature branch when start working a new feature
