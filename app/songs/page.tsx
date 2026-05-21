@@ -18,7 +18,8 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, formatDate, formatDuration, parseBeatsPerBar } from '@/lib/utils'
+import { useMetronome } from '@/hooks/useMetronome'
 import {
   Select,
   SelectContent,
@@ -65,11 +66,8 @@ export default function SongsPage() {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isPaused, setIsPaused] = useState(false)
 
-  // Metronome state
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const metronomeRef = useRef<NodeJS.Timeout | null>(null)
-  const beatCountRef = useRef(0)
-  const [beatType, setBeatType] = useState<'accent' | 'regular' | null>(null)
+  const metronome = useMetronome()
+  const { beatType } = metronome
 
   const fetchSongs = useCallback(async () => {
     setLoading(true)
@@ -104,12 +102,8 @@ export default function SongsPage() {
     fetchSongs()
   }, [fetchSongs])
 
-  // Cleanup AudioContext on unmount
   useEffect(() => {
-    return () => {
-      stopMetronome()
-      audioCtxRef.current?.close()
-    }
+    return () => metronome.destroy()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -168,56 +162,6 @@ export default function SongsPage() {
     fetchSongs()
   }
 
-  function parseBeatsPerBar(timeSignature: string | null): number {
-    if (!timeSignature) return 4
-    const n = parseInt(timeSignature.split('/')[0])
-    return isNaN(n) || n < 1 ? 4 : n
-  }
-
-  function playClick(accented: boolean) {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContext()
-    }
-    const ctx = audioCtxRef.current
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = accented ? 1200 : 800
-    const duration = accented ? 0.06 : 0.04
-    const volume = accented ? 1.0 : 0.5
-    gain.gain.setValueAtTime(volume, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + duration)
-  }
-
-  function startMetronome(bpm: number, beatsPerBar: number) {
-    stopMetronome()
-    beatCountRef.current = 0
-    const intervalMs = (60 / bpm) * 1000
-
-    const tick = () => {
-      const isAccent = beatCountRef.current === 0
-      playClick(isAccent)
-      setBeatType(isAccent ? 'accent' : 'regular')
-      setTimeout(() => setBeatType(null), 100)
-      beatCountRef.current = (beatCountRef.current + 1) % beatsPerBar
-    }
-
-    tick()
-    metronomeRef.current = setInterval(tick, intervalMs)
-  }
-
-  function stopMetronome() {
-    if (metronomeRef.current) {
-      clearInterval(metronomeRef.current)
-      metronomeRef.current = null
-    }
-    beatCountRef.current = 0
-    setBeatType(null)
-  }
-
   function handlePlayTimer(song: Song) {
     if (activeTimer) return // Disabled while timer is running
 
@@ -230,7 +174,7 @@ export default function SongsPage() {
       beatsPerBar,
     })
     setIsPaused(false)
-    if (song.bpm) startMetronome(song.bpm, beatsPerBar)
+    if (song.bpm) metronome.start(song.bpm, beatsPerBar)
   }
 
   function handlePauseTimer() {
@@ -239,12 +183,12 @@ export default function SongsPage() {
       timerIntervalRef.current = null
     }
     setIsPaused(true)
-    stopMetronome()
+    metronome.stop()
   }
 
   function handleResumeTimer() {
     setIsPaused(false)
-    if (activeTimer?.bpm) startMetronome(activeTimer.bpm, activeTimer.beatsPerBar)
+    if (activeTimer?.bpm) metronome.start(activeTimer.bpm, activeTimer.beatsPerBar)
     // Timer effect will automatically restart the interval
   }
 
@@ -254,7 +198,7 @@ export default function SongsPage() {
       timerIntervalRef.current = null
     }
 
-    stopMetronome()
+    metronome.stop()
     setActiveTimer(null)
     setIsPaused(false)
 
@@ -294,20 +238,6 @@ export default function SongsPage() {
     setTimeout(() => {
       toast.remove()
     }, 3000)
-  }
-
-  function formatDate(dateStr: string) {
-    return new Date(dateStr + 'Z').toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-  }
-
-  function formatTimerDisplay(seconds: number): string {
-    const minutes = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${minutes}:${secs.toString().padStart(2, '0')}`
   }
 
   const hasFilters = search || typeFilter
@@ -545,7 +475,7 @@ export default function SongsPage() {
               <div>
                 <p className="font-semibold">{activeTimer.songName}</p>
                 <p className="text-sm text-slate-300">
-                  {isPaused ? 'Time paused: ' : 'Time remaining: '}{formatTimerDisplay(activeTimer.secondsLeft)}
+                  {isPaused ? 'Time paused: ' : 'Time remaining: '}{formatDuration(activeTimer.secondsLeft)}
                 </p>
               </div>
             </div>

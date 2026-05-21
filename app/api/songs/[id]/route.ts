@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server'
-import { headers } from 'next/headers'
 import db from '@/lib/db'
-import { USER_ID_HEADER } from '@/lib/auth'
+import { getUserId } from '@/lib/auth'
 import type { Song } from '@/lib/types'
-
-async function getUserId(): Promise<number> {
-  const h = await headers()
-  return parseInt(h.get(USER_ID_HEADER) ?? '0')
-}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getUserId()

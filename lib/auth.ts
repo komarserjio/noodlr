@@ -1,12 +1,23 @@
+import { headers } from 'next/headers'
+
 export const AUTH_COOKIE = 'auth-token'
 export const USER_ID_HEADER = 'x-user-id'
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+export async function getUserId(): Promise<number> {
+  const h = await headers()
+  return parseInt(h.get(USER_ID_HEADER) ?? '0')
+}
 
 // Hash password with PBKDF2 — returns "saltHex:hashHex"
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16))
-  const saltHex = Array.from(salt)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
+  const saltHex = bytesToHex(salt)
 
   const encoder = new TextEncoder()
   const keyMaterial = await crypto.subtle.importKey(
@@ -21,11 +32,8 @@ export async function hashPassword(password: string): Promise<string> {
     keyMaterial,
     256
   )
-  const hashHex = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
 
-  return `${saltHex}:${hashHex}`
+  return `${saltHex}:${bytesToHex(new Uint8Array(hashBuffer))}`
 }
 
 // Verify a plaintext password against a stored hash
@@ -47,11 +55,8 @@ export async function verifyPassword(password: string, stored: string): Promise<
     keyMaterial,
     256
   )
-  const hashHex = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
 
-  return hashHex === storedHash
+  return bytesToHex(new Uint8Array(hashBuffer)) === storedHash
 }
 
 // Create a session token: "userId.hmac(userId)"
@@ -68,11 +73,8 @@ export async function createSessionToken(userId: number): Promise<string> {
     ['sign']
   )
   const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
-  const sigHex = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
 
-  return `${payload}.${sigHex}`
+  return `${payload}.${bytesToHex(new Uint8Array(sig))}`
 }
 
 // Verify a session token — returns userId or null
@@ -94,11 +96,8 @@ export async function verifySessionToken(token: string): Promise<number | null> 
     ['sign']
   )
   const expectedSig = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
-  const expectedHex = Array.from(new Uint8Array(expectedSig))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
 
-  if (expectedHex !== sigHex) return null
+  if (bytesToHex(new Uint8Array(expectedSig)) !== sigHex) return null
 
   const userId = parseInt(payload)
   return isNaN(userId) ? null : userId

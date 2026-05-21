@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { NavBar } from '@/components/NavBar'
 import { Button } from '@/components/ui/button'
 import { TYPE_COLORS, type Song, type PracticeSession } from '@/lib/types'
+import { formatDate, formatDateTime, formatDuration, parseBeatsPerBar } from '@/lib/utils'
+import { useMetronome } from '@/hooks/useMetronome'
 
 interface SongStats {
   total_sessions: number
@@ -29,36 +31,6 @@ interface ActiveTimer {
   beatsPerBar: number
 }
 
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr + 'Z').toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr + 'Z').toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function parseBeatsPerBar(timeSignature: string | null): number {
-  if (!timeSignature) return 4
-  const n = parseInt(timeSignature.split('/')[0])
-  return isNaN(n) || n < 1 ? 4 : n
-}
-
 export default function SongViewPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -73,11 +45,8 @@ export default function SongViewPage() {
   const [isPaused, setIsPaused] = useState(false)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Metronome state
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const metronomeRef = useRef<NodeJS.Timeout | null>(null)
-  const beatCountRef = useRef(0)
-  const [beatType, setBeatType] = useState<'accent' | 'regular' | null>(null)
+  const metronome = useMetronome()
+  const { beatType } = metronome
 
   const fetchData = useCallback(async () => {
     const [songRes, sessionsRes, statsRes] = await Promise.all([
@@ -97,12 +66,8 @@ export default function SongViewPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      stopMetronome()
-      audioCtxRef.current?.close()
-    }
+    return () => metronome.destroy()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -131,52 +96,12 @@ export default function SongViewPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTimer?.bpm, isPaused])
 
-  function playClick(accented: boolean) {
-    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
-    const ctx = audioCtxRef.current
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = accented ? 1200 : 800
-    const duration = accented ? 0.06 : 0.04
-    const volume = accented ? 1.0 : 0.5
-    gain.gain.setValueAtTime(volume, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + duration)
-  }
-
-  function startMetronome(bpm: number, beatsPerBar: number) {
-    stopMetronome()
-    beatCountRef.current = 0
-    const intervalMs = (60 / bpm) * 1000
-    const tick = () => {
-      const isAccent = beatCountRef.current === 0
-      playClick(isAccent)
-      setBeatType(isAccent ? 'accent' : 'regular')
-      setTimeout(() => setBeatType(null), 100)
-      beatCountRef.current = (beatCountRef.current + 1) % beatsPerBar
-    }
-    tick()
-    metronomeRef.current = setInterval(tick, intervalMs)
-  }
-
-  function stopMetronome() {
-    if (metronomeRef.current) {
-      clearInterval(metronomeRef.current)
-      metronomeRef.current = null
-    }
-    beatCountRef.current = 0
-    setBeatType(null)
-  }
-
   function handleStartTimer() {
     if (!song || activeTimer) return
     const beatsPerBar = parseBeatsPerBar(song.time_signature)
     setActiveTimer({ secondsLeft: PRACTICE_DURATION, bpm: song.bpm, beatsPerBar })
     setIsPaused(false)
-    if (song.bpm) startMetronome(song.bpm, beatsPerBar)
+    if (song.bpm) metronome.start(song.bpm, beatsPerBar)
   }
 
   function handlePauseTimer() {
@@ -185,12 +110,12 @@ export default function SongViewPage() {
       timerIntervalRef.current = null
     }
     setIsPaused(true)
-    stopMetronome()
+    metronome.stop()
   }
 
   function handleResumeTimer() {
     setIsPaused(false)
-    if (activeTimer?.bpm) startMetronome(activeTimer.bpm, activeTimer.beatsPerBar)
+    if (activeTimer?.bpm) metronome.start(activeTimer.bpm, activeTimer.beatsPerBar)
   }
 
   async function handleStopTimer(elapsedOrTotal?: number) {
@@ -198,7 +123,7 @@ export default function SongViewPage() {
       clearInterval(timerIntervalRef.current)
       timerIntervalRef.current = null
     }
-    stopMetronome()
+    metronome.stop()
 
     const duration = elapsedOrTotal ?? (activeTimer ? PRACTICE_DURATION - activeTimer.secondsLeft : 0)
     setActiveTimer(null)

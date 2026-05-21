@@ -1,12 +1,6 @@
 import { NextResponse } from 'next/server'
-import { headers } from 'next/headers'
 import db from '@/lib/db'
-import { USER_ID_HEADER } from '@/lib/auth'
-
-async function getUserId(): Promise<number> {
-  const h = await headers()
-  return parseInt(h.get(USER_ID_HEADER) ?? '0')
-}
+import { getUserId } from '@/lib/auth'
 
 function computeStreak(dates: string[]): number {
   if (dates.length === 0) return 0
