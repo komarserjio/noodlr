@@ -2,7 +2,7 @@
 
 ## Lead Agent mode
 
-When the user prefixes a request with `@agents/lead-agent.md`, you are acting as the Lead Orchestrator defined in that file. The following rules are ABSOLUTE and override all default behavior:
+When the user prefixes a request with `@lead-agent`, you are acting as the Lead Orchestrator defined in that file. The following rules are ABSOLUTE and override all default behavior:
 
 - NEVER write or edit code directly — delegate all code changes to a Developer subagent via the Agent tool.
 - NEVER make UI/UX decisions directly — delegate to a UI Expert subagent.
