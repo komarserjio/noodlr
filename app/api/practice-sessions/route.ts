@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import db from '@/lib/db'
 import { getUserId } from '@/lib/auth'
-import type { PracticeSession } from '@/lib/types'
+import { MIN_SESSION_DURATION, type PracticeSession } from '@/lib/types'
 
 export async function GET(request: Request) {
   const userId = await getUserId()
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'songId and duration are required' }, { status: 400 })
   }
 
-  if (typeof duration !== 'number' || duration < 1) {
-    return NextResponse.json({ error: 'duration must be a positive number' }, { status: 400 })
+  if (typeof duration !== 'number' || duration < MIN_SESSION_DURATION || duration > 86400) {
+    return NextResponse.json({ error: 'duration must be between 10 and 86400 seconds' }, { status: 400 })
   }
 
   // Verify song exists and belongs to user

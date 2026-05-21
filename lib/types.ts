@@ -34,6 +34,8 @@ export interface SongInput {
   genre: string
 }
 
+export const MIN_SESSION_DURATION = 10
+
 export const SONG_TYPES = ['Song', 'Riff', 'Melody', 'Progression'] as const
 export type SongType = typeof SONG_TYPES[number]
 

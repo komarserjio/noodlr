@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { NavBar } from '@/components/NavBar'
 import { Button } from '@/components/ui/button'
-import { TYPE_COLORS, type Song, type PracticeSession } from '@/lib/types'
+import { TYPE_COLORS, MIN_SESSION_DURATION, type Song, type PracticeSession } from '@/lib/types'
 import { formatDate, formatDateTime, formatDuration, parseBeatsPerBar } from '@/lib/utils'
 import { useMetronome } from '@/hooks/useMetronome'
 
@@ -21,6 +21,7 @@ import {
   Pencil,
   ExternalLink,
   ArrowLeft,
+  X,
 } from 'lucide-react'
 
 const PRACTICE_DURATION = 5 * 60
@@ -43,6 +44,8 @@ export default function SongViewPage() {
   // Timer state
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null)
   const [isPaused, setIsPaused] = useState(false)
+  const [sessionTooShort, setSessionTooShort] = useState(false)
+  const [sessionSaveError, setSessionSaveError] = useState(false)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const metronome = useMetronome()
@@ -67,7 +70,9 @@ export default function SongViewPage() {
   useEffect(() => { fetchData() }, [fetchData])
 
   useEffect(() => {
-    return () => metronome.destroy()
+    return () => {
+      metronome.destroy()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -129,17 +134,25 @@ export default function SongViewPage() {
     setActiveTimer(null)
     setIsPaused(false)
 
-    if (duration < 1) return
+    if (duration < MIN_SESSION_DURATION) {
+      setSessionTooShort(true)
+      return
+    }
 
     try {
-      await fetch('/api/practice-sessions', {
+      const response = await fetch('/api/practice-sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ songId: parseInt(id), duration }),
       })
-      fetchData() // Refresh sessions log
-    } catch (error) {
-      console.error('Failed to save practice session:', error)
+      if (!response.ok) {
+        setSessionSaveError(true)
+        return
+      }
+      fetchData()
+    } catch (e) {
+      console.error(e)
+      setSessionSaveError(true)
     }
   }
 
@@ -164,6 +177,22 @@ export default function SongViewPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to songs
         </Link>
+
+        {/* Session too short alert */}
+        {sessionTooShort && (
+          <div role="alert" className="mb-6 flex items-center justify-between rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>Session too short — practice at least {MIN_SESSION_DURATION} seconds to record it.</span>
+            <button onClick={() => setSessionTooShort(false)} aria-label="Dismiss" className="ml-4 text-red-500 hover:text-red-700 hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"><X className="h-4 w-4" /></button>
+          </div>
+        )}
+
+        {/* Session save error alert */}
+        {sessionSaveError && (
+          <div role="alert" className="mb-6 flex items-center justify-between rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>Failed to save practice session. Please try again.</span>
+            <button onClick={() => setSessionSaveError(false)} aria-label="Dismiss" className="ml-4 text-red-500 hover:text-red-700 hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"><X className="h-4 w-4" /></button>
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-8">

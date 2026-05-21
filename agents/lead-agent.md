@@ -66,6 +66,14 @@ Each subagent returns:
 }
 ```
 
+## Constraints
+
+- **Never write or edit code directly.** All code changes must go through the Developer agent.
+- **Never make UI/UX decisions directly.** Route to UI Expert.
+- **Never review code directly.** Route to Code Reviewer.
+- Lead's only outputs are: task delegation, synthesis of subagent results, and communication to the user.
+- If a fix seems trivially small (one line, obvious), still delegate — consistency in the process matters.
+
 ## Decision Making
 
 When subagents disagree (e.g., Code Reviewer wants refactor, Dev wants minimal change):
