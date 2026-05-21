@@ -66,6 +66,7 @@ export default function SongsPage() {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [sessionTooShort, setSessionTooShort] = useState(false)
+  const [sessionSaved, setSessionSaved] = useState(false)
 
   const metronome = useMetronome()
   const { beatType } = metronome
@@ -219,31 +220,12 @@ export default function SongsPage() {
       })
 
       if (res.ok) {
-        // Show toast notification
-        const elapsedMinutes = Math.floor(duration / 60)
-        const elapsedSeconds = duration % 60
-        const timeStr = `${elapsedMinutes}:${elapsedSeconds.toString().padStart(2, '0')}`
-
-        // Create and show toast (simple alert for now, could be upgraded to toast library)
-        const songName = songs.find(s => s.id === songId)?.name || 'Unknown song'
-        showToastNotification(`Practice session saved: ${timeStr} on ${songName}`)
+        setSessionSaved(true)
+        setTimeout(() => setSessionSaved(false), 3000)
       }
     } catch (error) {
       console.error('Failed to save practice session:', error)
     }
-  }
-
-  function showToastNotification(message: string) {
-    // Simple toast - could be replaced with a toast library later
-    const toast = document.createElement('div')
-    toast.className =
-      'fixed bottom-24 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-40 animate-pulse'
-    toast.textContent = message
-    document.body.appendChild(toast)
-
-    setTimeout(() => {
-      toast.remove()
-    }, 3000)
   }
 
   const hasFilters = search || typeFilter
@@ -258,6 +240,14 @@ export default function SongsPage() {
           <div role="alert" className="mb-6 flex items-center justify-between rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
             <span>Session too short — practice at least {MIN_SESSION_DURATION} seconds to record it.</span>
             <button onClick={() => setSessionTooShort(false)} aria-label="Dismiss" className="ml-4 text-red-500 hover:text-red-700 hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"><X className="h-4 w-4" /></button>
+          </div>
+        )}
+
+        {/* Session saved alert */}
+        {sessionSaved && (
+          <div role="alert" className="mb-6 flex items-center justify-between rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
+            <span>Practice session saved!</span>
+            <button onClick={() => setSessionSaved(false)} aria-label="Dismiss" className="ml-4 text-green-500 hover:text-green-700 hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded"><X className="h-4 w-4" /></button>
           </div>
         )}
 
