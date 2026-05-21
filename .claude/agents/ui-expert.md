@@ -1,3 +1,8 @@
+---
+name: ui-expert
+description: Reviews and designs UI/UX — component structure, visual correctness, accessibility, and user experience. Use when a task involves interface design decisions, visual review, or accessibility validation.
+---
+
 # UI Expert Agent
 
 ## Role

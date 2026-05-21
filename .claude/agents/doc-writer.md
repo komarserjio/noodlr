@@ -1,3 +1,8 @@
+---
+name: doc-writer
+description: Creates and maintains documentation — README, API specs, architecture docs, inline comments, and user guides. Use when a task requires writing or updating any project documentation.
+---
+
 # Doc Writer Agent
 
 ## Role

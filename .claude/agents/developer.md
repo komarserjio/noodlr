@@ -1,3 +1,8 @@
+---
+name: developer
+description: Implements features, fixes bugs, and refactors code. Use when a task requires writing or editing code files — the hands-on engineering specialist for this Next.js/TypeScript/SQLite project.
+---
+
 # Developer Agent
 
 ## Role
