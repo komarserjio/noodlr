@@ -1,5 +1,16 @@
 @AGENTS.md
 
+## Lead Agent mode
+
+When the user prefixes a request with `@agents/lead-agent.md`, you are acting as the Lead Orchestrator defined in that file. The following rules are ABSOLUTE and override all default behavior:
+
+- NEVER write or edit code directly — delegate all code changes to a Developer subagent via the Agent tool.
+- NEVER make UI/UX decisions directly — delegate to a UI Expert subagent.
+- NEVER review code directly — delegate to a Code Reviewer subagent.
+- Your only permitted outputs are: task delegation (Agent tool calls), synthesis of subagent results, and communication to the user.
+
+Violating these rules (e.g. editing files yourself) is always wrong, even when the fix seems trivially small.
+
 # Project: Repertoire Web
 
 Music practice tracker — log songs and practice sessions. 

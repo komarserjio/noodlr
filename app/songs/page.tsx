@@ -36,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { NavBar } from '@/components/NavBar'
-import { SONG_TYPES, TYPE_COLORS, type Song } from '@/lib/types'
+import { SONG_TYPES, TYPE_COLORS, MIN_SESSION_DURATION, type Song } from '@/lib/types'
 
 type SortField = 'name' | 'artist' | 'type' | 'created_at' | 'last_practiced'
 type SortOrder = 'asc' | 'desc'
@@ -65,6 +65,7 @@ export default function SongsPage() {
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isPaused, setIsPaused] = useState(false)
+  const [sessionTooShort, setSessionTooShort] = useState(false)
 
   const metronome = useMetronome()
   const { beatType } = metronome
@@ -202,6 +203,11 @@ export default function SongsPage() {
     setActiveTimer(null)
     setIsPaused(false)
 
+    if (duration < MIN_SESSION_DURATION) {
+      setSessionTooShort(true)
+      return
+    }
+
     try {
       const res = await fetch('/api/practice-sessions', {
         method: 'POST',
@@ -247,6 +253,14 @@ export default function SongsPage() {
       <NavBar />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 pb-20">
+        {/* Session too short alert */}
+        {sessionTooShort && (
+          <div role="alert" className="mb-6 flex items-center justify-between rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>Session too short — practice at least {MIN_SESSION_DURATION} seconds to record it.</span>
+            <button onClick={() => setSessionTooShort(false)} aria-label="Dismiss" className="ml-4 text-red-500 hover:text-red-700 hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"><X className="h-4 w-4" /></button>
+          </div>
+        )}
+
         {/* Filter bar */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
